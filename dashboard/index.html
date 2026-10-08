@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5G Slicing Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #EDF1F4;
+  --panel: #FFFFFF;
+  --ink: #142530;
+  --ink-2: #4D5E6A;
+  --ink-3: #7A8A95;
+  --line: #D3DCE3;
+  --embb: #2F6FDB;
+  --urllc: #C2367A;
+  --mmtc: #0E8F86;
+  --be: #8A949E;
+  --ok: #2B8A3E;
+  --warn: #C47A08;
+  --bad: #D23F3F;
+  --t-bg: #0F1E26;
+  --t-panel: #142731;
+  --t-ink: #D5E5EB;
+  --t-dim: #7F98A3;
+  --t-line: #23404D;
+  --t-cyan: #66C9DD;
+  --t-green: #A3D87F;
+  --t-amber: #F2B85C;
+  --t-red: #F07A6E;
+  --sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); }
+body { font-family: var(--sans); font-size: 18px; line-height: 1.45; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--embb); outline-offset: 2px; }
+
+/* ---------- header ---------- */
+.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  padding: 18px 28px; background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.top h1 { margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -0.01em; }
+.top p { margin: 4px 0 0; color: var(--ink-2); font-size: 16px; }
+.status {
+  flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+  padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 17px;
+  background: var(--paper); border: 1px solid var(--line);
+}
+.status .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--ink-3); }
+.status.running .dot, .status.replay .dot { background: var(--ok); animation: blink 1.2s infinite; }
+.status.offline { color: var(--bad); }
+.status.offline .dot { background: var(--bad); }
+@keyframes blink { 50% { opacity: 0.25; } }
+
+/* ---------- layout ---------- */
+.layout {
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(430px, 1fr);
+  gap: 22px; padding: 22px 28px 40px; align-items: start;
+}
+.friendly { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+.panel h2 { margin: 0 0 4px; font-size: 22px; }
+.panel .lead { margin: 0 0 14px; color: var(--ink-2); font-size: 16px; }
+
+/* ---------- controls ---------- */
+.controls { display: grid; gap: 16px; }
+.choice-row { display: block; }
+.choice-row > .q { font-weight: 700; margin-bottom: 8px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  border: 1.5px solid var(--line); background: var(--panel); border-radius: 999px;
+  padding: 8px 16px; cursor: pointer; font-size: 16.5px;
+}
+.pill:hover { border-color: var(--ink-3); }
+.pill[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.hint { margin: 6px 0 0; color: var(--ink-2); font-size: 15.5px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding-top: 4px; border-top: 1px solid var(--line); padding-top: 16px; }
+.btn {
+  border: 0; border-radius: 10px; padding: 12px 22px; font-weight: 700; font-size: 18px; cursor: pointer;
+  background: var(--ink); color: #fff;
+}
+.btn.secondary { background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); }
+.btn.stop { background: var(--bad); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.replay { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--ink-2); font-size: 15.5px; }
+.replay select { padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--panel); font-size: 15.5px; max-width: 100%; }
+
+/* ---------- network map ---------- */
+.map-wrap { position: relative; }
+#map { display: block; width: 100%; height: 330px; }
+.map-msg { margin: 0 0 8px; padding: 10px 14px; border-radius: 10px; background: var(--paper); font-weight: 700; font-size: 16.5px; }
+.map-note { margin: 10px 0 0; color: var(--ink-2); font-size: 15.5px; }
+.map-note .red { color: var(--bad); font-weight: 700; }
+.steps { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 16px 0 0; padding: 0; counter-reset: step; }
+.steps li {
+  counter-increment: step; position: relative; padding: 10px 12px 10px 44px; border-radius: 10px;
+  background: var(--paper); color: var(--ink-3); font-size: 15.5px; line-height: 1.25;
+}
+.steps li::before {
+  content: counter(step); position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  border: 1.5px solid currentColor; font-size: 13px; font-weight: 700;
+}
+.steps li.done { color: var(--ink-2); }
+.steps li.done::before { content: "\2713"; background: var(--ok); border-color: var(--ok); color: #fff; }
+.steps li.current { background: var(--ink); color: #fff; font-weight: 700; }
+
+/* ---------- slice cards ---------- */
+.slices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 14px; border-top: 6px solid var(--c); }
+.card h3 { margin: 0; font-size: 19px; line-height: 1.2; }
+.card .tag { color: var(--ink-3); font-size: 14.5px; margin: 2px 0 10px; }
+.card .row { display: flex; justify-content: space-between; gap: 8px; font-size: 16.5px; color: var(--ink-2); white-space: nowrap; }
+.card .row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 12px; background: var(--paper); border-radius: 6px; margin: 10px 0 12px; overflow: visible; }
+.bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--c); opacity: 0.85; transition: width 0.6s; }
+.bar .gate { position: absolute; top: -5px; bottom: -5px; width: 3px; background: var(--ink); border-radius: 2px; transition: left 0.6s; }
+.big { font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.big small { font-size: 16px; font-weight: 400; color: var(--ink-2); margin-left: 6px; }
+.verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.verdict.ok { color: var(--ok); } .verdict.warn { color: var(--warn); } .verdict.bad { color: var(--bad); } .verdict.wait { color: var(--ink-3); font-weight: 400; }
+
+/* ---------- story ---------- */
+.story p { margin: 0; font-size: 20px; line-height: 1.5; max-width: 70ch; }
+.story p + p { margin-top: 6px; }
+
+/* ---------- mini charts ---------- */
+.minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
+.mini h3 { margin: 0 0 4px; font-size: 16.5px; display: flex; align-items: center; gap: 8px; }
+.mini h3 i { width: 12px; height: 12px; border-radius: 3px; background: var(--c); display: inline-block; }
+.mini canvas { width: 100%; height: 120px; display: block; }
+.legend { display: flex; gap: 20px; color: var(--ink-2); font-size: 15px; margin: 0 0 12px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend .solid { width: 26px; height: 3px; background: var(--ink); }
+.legend .dash { width: 26px; height: 0; border-top: 3px dashed var(--ink-2); }
+.legend .flat { width: 26px; height: 0; border-top: 2px dotted var(--ink-3); }
+
+/* ---------- results ---------- */
+.res-cases { margin-bottom: 14px; }
+.res-summary { font-size: 18px; margin: 0 0 16px; }
+.res-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; }
+.res-slice h3 { margin: 0 0 8px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.res-slice h3 i { width: 12px; height: 12px; border-radius: 3px; background: var(--c); }
+.res-bar { display: grid; grid-template-columns: 116px 1fr 64px; gap: 10px; align-items: center; font-size: 15px; margin-bottom: 6px; }
+.res-bar .track { position: relative; height: 18px; background: var(--paper); border-radius: 5px; }
+.res-bar .fillr { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; }
+.res-bar .paper-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--warn); }
+.res-bar .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.res-key { display: flex; gap: 18px; flex-wrap: wrap; color: var(--ink-2); font-size: 15px; margin-top: 14px; }
+.res-key span { display: inline-flex; gap: 8px; align-items: center; }
+.res-key i { width: 16px; height: 12px; border-radius: 3px; display: inline-block; }
+.empty { color: var(--ink-2); font-size: 17px; margin: 0; }
+
+/* ---------- technical side ---------- */
+.tech {
+  position: sticky; top: 16px; height: calc(100vh - 32px); min-height: 640px;
+  display: grid; grid-template-rows: auto minmax(0, 0.9fr) minmax(0, 1.1fr) auto; gap: 14px;
+  background: var(--t-bg); color: var(--t-ink); border-radius: 16px; padding: 18px; min-width: 0;
+}
+.tech h2 { margin: 0; font-size: 20px; color: #fff; }
+.tech .lead { margin: 2px 0 0; color: var(--t-dim); font-size: 15px; }
+.tbox { background: var(--t-panel); border: 1px solid var(--t-line); border-radius: 12px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.tbar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--t-line); flex-wrap: wrap; }
+.tab {
+  background: transparent; border: 1px solid transparent; color: var(--t-dim); border-radius: 8px;
+  padding: 5px 10px; cursor: pointer; font-family: var(--mono); font-size: 13.5px;
+}
+.tab[aria-selected="true"] { background: var(--t-bg); border-color: var(--t-line); color: #fff; }
+.tbtn { background: var(--t-bg); border: 1px solid var(--t-line); color: var(--t-ink); border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 14px; }
+.tbtn.danger { border-color: #6b2f2b; color: var(--t-red); }
+.spacer { flex: 1; }
+.now {
+  padding: 8px 12px; font-size: 15px; color: var(--t-ink); border-bottom: 1px solid var(--t-line);
+  background: rgba(102, 201, 221, 0.08); min-height: 40px;
+}
+.now b { color: var(--t-cyan); font-family: var(--mono); font-weight: 600; font-size: 14px; }
+.code { flex: 1; overflow: auto; margin: 0; padding: 8px 0; font-family: var(--mono); font-size: 13.5px; line-height: 1.6; }
+.code .ln { display: grid; grid-template-columns: 44px 1fr; padding-right: 12px; white-space: pre; }
+.code .ln .n { color: #4F6D7A; text-align: right; padding-right: 12px; user-select: none; }
+.code .ln.c .t { color: var(--t-dim); }
+.code .ln.cur { background: rgba(102, 201, 221, 0.18); box-shadow: inset 4px 0 0 var(--t-cyan); }
+.code .ln.cur .n { color: var(--t-cyan); }
+.code .ln.flash { background: rgba(242, 184, 92, 0.22); box-shadow: inset 4px 0 0 var(--t-amber); transition: background 0.3s; }
+.termout { flex: 1; overflow: auto; padding: 10px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.termout .cmd { color: var(--t-green); }
+.termout .cmd::before { content: "ubuntu@sdn:~/afqos-slicing$ "; color: var(--t-dim); }
+.termout .trace { color: var(--t-cyan); }
+.termout .trace::before { content: "\25B6  "; }
+.termout .err { color: var(--t-red); }
+.termout .exit { color: var(--t-dim); font-style: italic; }
+.termout .slice-line { color: var(--t-amber); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--t-line); }
+.chip { background: transparent; border: 1px dashed var(--t-line); color: var(--t-ink); border-radius: 999px; padding: 4px 10px; cursor: pointer; font-size: 13.5px; }
+.chip:hover { border-color: var(--t-cyan); color: #fff; }
+.tform { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--t-line); font-family: var(--mono); font-size: 13.5px; }
+.tform .prompt { color: var(--t-dim); white-space: nowrap; }
+.tform input { flex: 1; background: transparent; border: 0; color: #fff; font-family: var(--mono); font-size: 14px; outline: none; min-width: 0; }
+.dec { font-family: var(--mono); font-size: 13px; width: 100%; border-collapse: collapse; }
+.dec th { color: var(--t-dim); font-weight: 400; text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--t-line); }
+.dec th:first-child, .dec td:first-child { text-align: left; }
+.dec td { text-align: right; padding: 5px 8px; font-variant-numeric: tabular-nums; }
+.dec td.up { color: var(--t-green); } .dec td.down { color: var(--t-amber); }
+.dec-cap { padding: 8px 12px 0; color: var(--t-dim); font-size: 13.5px; }
+
+@media (max-width: 1180px) {
+  .layout { grid-template-columns: 1fr; }
+  .tech { position: static; height: auto; grid-template-rows: auto 420px 460px auto; }
+}
+@media (max-height: 860px) and (min-width: 1181px) {
+  .tech { position: static; height: auto; min-height: 0; grid-template-rows: auto 330px 400px auto; }
+}
+@media (max-width: 720px) {
+  .top { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .layout { padding: 16px; }
+  .choice-row { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .slices, .minis, .res-grid { grid-template-columns: 1fr; }
+  
+}
+@media (prefers-reduced-motion: reduce) {
+  .status .dot { animation: none !important; }
+  .bar .fill, .bar .gate { transition: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>One network, four slices</h1>
+    <p>Live demo of adaptive bandwidth slicing with SDN, reproducing Deo, Chaudhary &amp; Assaf (2024), PeerJ Computer Science</p>
+  </div>
+  <div class="status" id="status" role="status"><span class="dot"></span><span id="statusText">Connecting to the VM&hellip;</span></div>
+</header>
+
+<main class="layout">
+  <section class="friendly" aria-label="Experiment, explained">
+
+    <div class="panel controls">
+      <div>
+        <h2>Choose an experiment</h2>
+        <p class="lead">Pick how busy the network is and which rule the controller uses to share bandwidth, then press Run.</p>
+      </div>
+      <div class="choice-row">
+        <div class="q">How busy is the network?</div>
+        <div>
+          <div class="pills" id="pCase">
+            <button class="pill" data-v="1">Normal (80%)</button>
+            <button class="pill" data-v="2">Full (100%)</button>
+            <button class="pill" data-v="3">Overloaded (120%)</button>
+            <button class="pill" data-v="4">Best-effort surge</button>
+          </div>
+          <p class="hint" id="caseHint"></p>
+        </div>
+      </div>
+      <div class="choice-row">
+        <div class="q">How should bandwidth be shared?</div>
+        <div>
+          <div class="pills" id="pAlgo">
+            <button class="pill" data-v="static">Fixed slices</button>
+            <button class="pill" data-v="aqos">AQoS (older method)</button>
+            <button class="pill" data-v="afqos">AFQoS (the paper's method)</button>
+          </div>
+          <p class="hint" id="algoHint"></p>
+        </div>
+      </div>
+      <div class="choice-row">
+        <div class="q">For how long?</div>
+        <div class="pills" id="pDur">
+          <button class="pill" data-v="30">30 seconds</button>
+          <button class="pill" data-v="60">1 minute</button>
+          <button class="pill" data-v="120">2 minutes</button>
+          <button class="pill" data-v="300">5 minutes (as in the paper)</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="runBtn">Run this experiment</button>
+        <button class="btn secondary" id="cmpBtn">Run all three rules, one after another</button>
+        <button class="btn stop" id="stopBtn" disabled>Stop</button>
+      </div>
+      <div class="replay">
+        <label for="replaySel">No live network? Replay a saved run instead:</label>
+        <select id="replaySel"></select>
+        <button class="btn secondary" id="replayBtn" style="padding:8px 14px;font-size:16px">Replay</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>The network, live</h2>
+      <p class="lead">Four kinds of traffic share one 20 Mbps link. At switch s2 each slice passes through its own gate, and the controller re-sizes the gates every second.</p>
+      <p class="map-msg" id="mapMsg" hidden></p>
+      <div class="map-wrap"><canvas id="map" aria-label="Animated network map showing traffic from four slices passing through gates at switch s2"></canvas></div>
+      <p class="map-note">Each moving dot is a burst of data. A gate's opening shows how much bandwidth that slice is allowed. <span class="red">Red dots falling away</span> are packets the switch had to drop.</p>
+      <ol class="steps" id="steps">
+        <li data-p="cleanup">Clean up old runs</li>
+        <li data-p="controller">Start the controller</li>
+        <li data-p="network">Build the network</li>
+        <li data-p="traffic">Send traffic</li>
+        <li data-p="save">Save the results</li>
+      </ol>
+    </div>
+
+    <div class="slices" id="slices"></div>
+
+    <div class="panel story">
+      <h2>What is happening right now</h2>
+      <div id="story"><p>Nothing is running yet. Choose an experiment above and press Run.</p></div>
+    </div>
+
+    <div class="panel">
+      <h2>Traffic over time</h2>
+      <div class="legend">
+        <span><i class="solid"></i>what the slice tries to send</span>
+        <span><i class="dash"></i>what its gate allows</span>
+        <span><i class="flat"></i>its guaranteed share</span>
+      </div>
+      <div class="minis" id="minis"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Which rule shares bandwidth best?</h2>
+      <p class="lead">Share of each slice's traffic that got through, from our saved runs. Orange ticks mark the paper's numbers.</p>
+      <div class="pills res-cases" id="pRes">
+        <button class="pill" data-v="1">Normal (80%)</button>
+        <button class="pill" data-v="2">Full (100%)</button>
+        <button class="pill" data-v="3">Overloaded (120%)</button>
+        <button class="pill" data-v="4">Best-effort surge</button>
+      </div>
+      <div id="results"></div>
+    </div>
+  </section>
+
+  <aside class="tech" aria-label="Under the hood">
+    <div>
+      <h2>Under the hood</h2>
+      <p class="lead">The real code and terminal running inside the Ubuntu VM.</p>
+    </div>
+
+    <div class="tbox">
+      <div class="tbar" role="tablist" id="codeTabs">
+        <button class="tab" role="tab" data-f="run_case.sh" aria-selected="true" title="The experiment script">run_case.sh</button>
+        <button class="tab" role="tab" data-f="afqos_app.py" aria-selected="false" title="The SDN controller">afqos_app.py</button>
+        <button class="tab" role="tab" data-f="qostopo.py" aria-selected="false" title="The virtual network and its traffic">qostopo.py</button>
+      </div>
+      <div class="now" id="now">The script is idle. Run an experiment to watch it execute line by line.</div>
+      <pre class="code" id="code"></pre>
+    </div>
+
+    <div class="tbox">
+      <div class="tbar">
+        <strong style="font-size:15px">Terminal</strong>
+        <span class="spacer"></span>
+        <button class="tbtn danger" id="tStop">Stop (Ctrl+C)</button>
+        <button class="tbtn" id="tClear">Clear</button>
+      </div>
+      <div class="termout" id="term" aria-live="off"></div>
+      <div class="chips">
+        <button class="chip" data-cmd="sudo ovs-ofctl -O OpenFlow13 dump-meters s2">show the gates (meters) on s2</button>
+        <button class="chip" data-cmd="sudo ovs-ofctl -O OpenFlow13 dump-flows s2">show s2's flow table</button>
+        <button class="chip" data-cmd="ls -lh results">list saved results</button>
+        <button class="chip" data-cmd="python analyze.py">analyze all results</button>
+      </div>
+      <form class="tform" id="tForm" autocomplete="off">
+        <span class="prompt">ubuntu@sdn:~/afqos-slicing$</span>
+        <input id="tIn" spellcheck="false" aria-label="Type a command">
+      </form>
+    </div>
+
+    <div class="tbox">
+      <div class="dec-cap" id="decCap">Controller decisions this second (kbps)</div>
+      <table class="dec" id="dec">
+        <thead><tr><th>slice</th><th>sends</th><th>predicted</th><th>asks for</th><th>switch gate</th><th>delivered</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </aside>
+</main>
+
+<script>
+"use strict";
+const SLICES = [
+  { id: 1, key: "embb",  short: "Video",  name: "Video",            tag: "eMBB, high bandwidth",        color: "#2F6FDB", sla: 8 },
+  { id: 2, key: "urllc", short: "Gaming", name: "Gaming & surgery", tag: "URLLC, must not be delayed",   color: "#C2367A", sla: 6 },
+  { id: 3, key: "mmtc",  short: "IoT",    name: "IoT sensors",      tag: "mMTC, many small devices",     color: "#0E8F86", sla: 4 },
+  { id: 4, key: "be",    short: "Other",  name: "Everything else",  tag: "Best effort, lowest priority", color: "#8A949E", sla: 2 },
+];
+const CASES = {
+  1: { name: "Normal (80%)", short: "normal", hint: "The slices together ask for about 16 Mbps of the 20 Mbps link. There is room to spare." },
+  2: { name: "Full (100%)", short: "full", hint: "The slices together ask for about 20 Mbps, exactly what the link can carry." },
+  3: { name: "Overloaded (120%)", short: "overloaded", hint: "The slices together ask for about 24 Mbps, more than the link can carry. Someone has to lose packets." },
+  4: { name: "Best-effort surge", short: "best-effort surge", hint: "The important slices are quiet, but best-effort traffic doubles. Can it borrow their unused bandwidth?" },
+};
+const ALGOS = {
+  static: { name: "Fixed slices", hint: "Every slice keeps its guaranteed share and nothing more. Unused bandwidth is wasted." },
+  aqos:   { name: "AQoS", hint: "The older method: a quiet slice's gate is cut down to exactly what it uses, and the spare goes to busy slices." },
+  afqos:  { name: "AFQoS", hint: "The paper's method: spare bandwidth is lent to busy slices in proportion to their need, but quiet slices keep some room to grow." },
+};
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const mbps = v => (v == null ? null : v / 1000);
+const fmt = (v, d = 1) => (v == null || isNaN(v) ? "–" : v.toFixed(d));
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const S = {
+  sel: { case: 3, algo: "afqos", dur: 60, res: 3 },
+  status: { state: "idle" }, metrics: null, phase: null, history: {},
+  files: {}, tab: "run_case.sh", curLine: null, curCmd: null, results: null,
+};
+SLICES.forEach(s => (S.history[s.id] = []));
+
+/* ---------------- choices ---------------- */
+function bindPills(id, key, after) {
+  const box = $("#" + id);
+  const sync = () => $$(".pill", box).forEach(b => b.setAttribute("aria-pressed", String(String(S.sel[key]) === b.dataset.v)));
+  box.addEventListener("click", e => {
+    const b = e.target.closest(".pill"); if (!b) return;
+    S.sel[key] = isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v; sync(); after && after();
+  });
+  sync();
+}
+function syncPills() {
+  [["pCase", "case"], ["pAlgo", "algo"], ["pDur", "dur"], ["pRes", "res"]].forEach(([id, key]) =>
+    $$("#" + id + " .pill").forEach(b => b.setAttribute("aria-pressed", String(String(S.sel[key]) === b.dataset.v))));
+  hints();
+}
+function hints() { $("#caseHint").textContent = CASES[S.sel.case].hint; $("#algoHint").textContent = ALGOS[S.sel.algo].hint; }
+bindPills("pCase", "case", hints); bindPills("pAlgo", "algo", hints); bindPills("pDur", "dur"); bindPills("pRes", "res", renderResults); hints();
+
+/* ---------------- API ---------------- */
+async function post(path, body) {
+  try {
+    const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+    const j = await r.json();
+    if (!r.ok) addTerm({ kind: "err", text: j.error || "request failed" });
+    return j;
+  } catch (e) { addTerm({ kind: "err", text: "Could not reach the VM: is dashboard/server.py still running?" }); }
+}
+$("#runBtn").onclick = () => post("/api/experiment", { algo: S.sel.algo, case: S.sel.case, duration: S.sel.dur });
+$("#cmpBtn").onclick = () => { S.sel.res = S.sel.case; post("/api/experiment", { algo: S.sel.algo, case: S.sel.case, duration: S.sel.dur, compare: true }); };
+$("#stopBtn").onclick = () => post("/api/stop");
+$("#tStop").onclick = () => post("/api/stop");
+$("#replayBtn").onclick = () => { const f = $("#replaySel").value; if (f) post("/api/replay", { file: f, speed: 1 }); };
+
+/* ---------------- slice cards & minis ---------------- */
+function buildCards() {
+  $("#slices").innerHTML = SLICES.map(s => `
+    <article class="card" style="--c:${s.color}" id="card${s.id}">
+      <h3>${s.name}</h3>
+      <div class="tag">${s.tag}</div>
+      <div class="row"><span>Guaranteed</span><b>${s.sla} Mbps</b></div>
+      <div class="row"><span>Trying to send</span><b data-f="off">–</b></div>
+      <div class="row"><span>Gate allows</span><b data-f="gate">–</b></div>
+      <div class="bar"><div class="fill" data-f="fill" style="width:0"></div><div class="gate" data-f="gatemark" style="left:0"></div></div>
+      <div class="big" data-f="pct">–<small>got through</small></div>
+      <div class="verdict wait" data-f="verdict">Waiting for traffic</div>
+    </article>`).join("");
+  $("#minis").innerHTML = SLICES.map(s => `
+    <div class="mini" style="--c:${s.color}"><h3><i></i>${s.name}</h3><canvas id="mini${s.id}"></canvas></div>`).join("");
+}
+buildCards();
+
+function gateOf(sl) {
+  if (sl.switch_kbps != null) return mbps(sl.switch_kbps);
+  if (sl.asked_kbps != null && sl.asked_kbps > 0) return mbps(sl.asked_kbps);
+  if (sl.asked_kbps === 0 && S.metrics && S.metrics.source === "replay") return 0;
+  return sl.sla_kbps / 1000;
+}
+
+function updateCards(m) {
+  m.slices.forEach(sl => {
+    const card = $("#card" + sl.id); const off = mbps(sl.offered_kbps); const gate = gateOf(sl);
+    const scale = 14;
+    $('[data-f="off"]', card).textContent = off == null ? "–" : fmt(off) + " Mbps";
+    $('[data-f="gate"]', card).textContent = gate == null ? "–" : fmt(gate) + " Mbps";
+    $('[data-f="fill"]', card).style.width = Math.min(100, ((off || 0) / scale) * 100) + "%";
+    $('[data-f="gatemark"]', card).style.left = `calc(${Math.min(100, ((gate || 0) / scale) * 100)}% - 1px)`;
+    const pct = sl.through_pct; const v = $('[data-f="verdict"]', card);
+    if (pct == null) {
+      $('[data-f="pct"]', card).innerHTML = "–<small>got through</small>";
+      v.className = "verdict wait"; v.textContent = "Measuring…";
+    } else {
+      $('[data-f="pct"]', card).innerHTML = `${pct >= 99.95 ? "100" : pct.toFixed(1)}%<small>got through</small>`;
+      if (pct >= 98) { v.className = "verdict ok"; v.textContent = "✓ Getting its traffic through"; }
+      else if (pct >= 80) { v.className = "verdict warn"; v.textContent = "Losing some packets"; }
+      else { v.className = "verdict bad"; v.textContent = "Losing many packets"; }
+    }
+  });
+}
+
+function setupCanvas(c, h) {
+  const dpr = window.devicePixelRatio || 1; const w = c.clientWidth;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w, h };
+}
+
+function drawMinis() {
+  SLICES.forEach(s => {
+    const c = $("#mini" + s.id); if (!c) return;
+    const { g, w, h } = setupCanvas(c, 120);
+    g.clearRect(0, 0, w, h);
+    const padL = 34, padB = 18, top = 6, maxY = 14;
+    const pts = S.history[s.id]; const tNow = pts.length ? pts[pts.length - 1].t : 0;
+    const span = Math.min(120, Math.max(30, tNow));
+    const X = t => padL + ((t - (tNow - span)) / span) * (w - padL - 6);
+    const Y = v => top + (1 - Math.min(v, maxY) / maxY) * (h - top - padB);
+    g.font = "12px " + getComputedStyle(document.body).fontFamily; g.fillStyle = "#7A8A95"; g.strokeStyle = "#E3E9EE"; g.lineWidth = 1;
+    [0, 5, 10].forEach(v => { g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(w - 6, Y(v)); g.stroke(); g.fillText(v + "", 8, Y(v) + 4); });
+    g.fillText("Mbps", 0, top + 6);
+    g.setLineDash([2, 4]); g.strokeStyle = "#9AA8B2"; g.beginPath(); g.moveTo(padL, Y(s.sla)); g.lineTo(w - 6, Y(s.sla)); g.stroke(); g.setLineDash([]);
+    if (pts.length < 2) { g.fillStyle = "#7A8A95"; g.fillText("No traffic yet", padL + 8, h / 2); return; }
+    const vis = pts.filter(p => p.t >= tNow - span);
+    g.strokeStyle = s.color; g.lineWidth = 2.5; g.beginPath();
+    vis.forEach((p, i) => { if (p.off == null) return; i ? g.lineTo(X(p.t), Y(p.off)) : g.moveTo(X(p.t), Y(p.off)); }); g.stroke();
+    g.strokeStyle = "#4D5E6A"; g.lineWidth = 2; g.setLineDash([6, 4]); g.beginPath();
+    vis.forEach((p, i) => { if (p.gate == null) return; i ? g.lineTo(X(p.t), Y(p.gate)) : g.moveTo(X(p.t), Y(p.gate)); }); g.stroke(); g.setLineDash([]);
+    g.fillStyle = "#7A8A95"; g.fillText(`${Math.round(tNow)} s`, w - 40, h - 2);
+  });
+}
+
+/* ---------------- plain-English story ---------------- */
+function story(m) {
+  const offered = m.slices.reduce((a, x) => a + (x.offered_kbps || 0), 0);
+  if (offered < 300) {
+    $("#story").innerHTML = "<p>Traffic has stopped. The run is finishing and its results are being saved.</p>"; return;
+  }
+  const lines = []; const sl = m.slices.map(x => ({ ...x, s: SLICES[x.id - 1], off: mbps(x.offered_kbps), gate: gateOf(x), dlv: mbps(x.delivered_kbps) }));
+  const total = sl.reduce((a, x) => a + (x.off || 0), 0);
+  lines.push(`At ${Math.round(m.t)} seconds the four slices are trying to send ${total.toFixed(1)} Mbps in total, ${Math.round(total / 20 * 100)}% of what the 20 Mbps link can carry.`);
+  if (m.algo === "static") {
+    const capped = sl.filter(x => x.off != null && x.off > x.s.sla + 0.3);
+    lines.push(capped.length
+      ? `With fixed slices the gates never move, so ${list(capped.map(x => x.s.name))} ${capped.length > 1 ? "are" : "is"} stuck at the guaranteed share even if another slice has room to spare.`
+      : "With fixed slices the gates never move. Right now every slice fits inside its guaranteed share.");
+  } else {
+    const up = sl.filter(x => x.gate != null && x.gate > x.s.sla + 0.15);
+    const down = sl.filter(x => x.gate != null && x.gate < x.s.sla - 0.15);
+    if (up.length) lines.push(`The controller (${ALGOS[m.algo].name}) opened the gate wider for ${list(up.map(x => `${x.s.name} (${x.gate.toFixed(1)} Mbps instead of ${x.s.sla})`))}.`);
+    if (down.length) lines.push(`To make room, it narrowed the gate for ${list(down.map(x => x.s.name))}.`);
+    if (!up.length && !down.length) lines.push(`The controller (${ALGOS[m.algo].name}) is keeping every gate at its guaranteed share this second.`);
+  }
+  const losing = sl.filter(x => x.off > 0.3 && x.dlv != null && x.dlv < x.off * 0.95);
+  lines.push(losing.length ? `${list(losing.map(x => `${x.s.name} is losing about ${Math.round((1 - x.dlv / x.off) * 100)}% of its packets`))}.` : "No slice is losing packets this second.");
+  $("#story").innerHTML = lines.map(l => `<p>${l}</p>`).join("");
+}
+function list(a) { return a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; }
+
+/* ---------------- decisions table ---------------- */
+function decisions(m) {
+  const tb = $("#dec tbody");
+  tb.innerHTML = m.slices.map(x => {
+    const s = SLICES[x.id - 1]; const asked = x.asked_kbps; const cls = asked == null ? "" : asked > x.sla_kbps + 100 ? "up" : asked < x.sla_kbps - 100 ? "down" : "";
+    const n = v => (v == null ? "–" : Math.round(v).toLocaleString("en-US"));
+    return `<tr><td style="color:${s.color}">${s.key}</td><td>${n(x.offered_kbps)}</td><td>${n(x.predicted_kbps)}</td><td class="${cls}">${asked == null ? (m.algo === "static" ? "fixed" : "–") : n(asked)}</td><td>${n(x.switch_kbps)}</td><td>${n(x.delivered_kbps)}</td></tr>`;
+  }).join("");
+  $("#decCap").textContent = `Controller decisions at t = ${Math.round(m.t)} s (kbps)` + (m.source === "replay" ? ", replayed from a saved log" : "");
+}
+
+/* ---------------- network map (canvas) ---------------- */
+const MAP = { dots: [], acc: [0, 0, 0, 0], last: performance.now(), pulse: 0, open: [1, 1, 1, 1], drop: [0, 0, 0, 0], off: [0, 0, 0, 0] };
+function mapTargets(m) {
+  m.slices.forEach((x, i) => {
+    const off = mbps(x.offered_kbps) || 0, dlv = mbps(x.delivered_kbps), gate = gateOf(x);
+    MAP.off[i] = off;
+    MAP.drop[i] = off > 0.2 && dlv != null ? Math.max(0, Math.min(1, 1 - dlv / off)) : 0;
+    MAP.open[i] = off > 0.2 && gate != null ? Math.max(0.05, Math.min(1, gate / off)) : 1;
+  });
+  MAP.pulse = 1;
+}
+function drawMap(now) {
+  const c = $("#map"); const { g, w, h } = setupCanvas(c, 330);
+  const dt = Math.min(0.1, (now - MAP.last) / 1000); MAP.last = now;
+  const font = getComputedStyle(document.body).fontFamily;
+  const narrow = w < 560;
+  const xs = narrow ? 84 : Math.min(200, Math.max(170, w * 0.22)), xe = narrow ? w - 10 : w - 140, laneY = i => 104 + i * 58;
+  const sx = [xs + (xe - xs) * 0.12, xs + (xe - xs) * 0.46, xs + (xe - xs) * 0.72, xs + (xe - xs) * 0.9];
+  const gx = sx[1];
+  g.clearRect(0, 0, w, h);
+  const running = S.status.state === "running" || S.status.state === "replay";
+
+  // controller and its link to s2
+  const cw = narrow ? 200 : 230, ch = 50, cx = Math.max(4, Math.min(w - cw - 4, gx - cw / 2)), cy = 8;
+  g.strokeStyle = "#4D5E6A"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(gx, cy + ch); g.lineTo(gx, 70); g.stroke();
+  if (MAP.pulse > 0) {
+    g.strokeStyle = `rgba(47,111,219,${MAP.pulse * 0.6})`; g.lineWidth = 3;
+    const grow = (1 - MAP.pulse) * 10; roundRect(g, cx - grow, cy - grow, cw + 2 * grow, ch + 2 * grow, 12 + grow); g.stroke();
+    MAP.pulse = Math.max(0, MAP.pulse - dt * 1.4);
+  }
+  g.fillStyle = "#142530"; roundRect(g, cx, cy, cw, ch, 12); g.fill();
+  g.fillStyle = "#fff"; g.font = `700 16px ${font}`; g.textAlign = "center"; g.fillText("Controller (Ryu)", cx + cw / 2, cy + 22);
+  g.font = `${narrow ? 12.5 : 14}px ${font}`; g.fillStyle = "#C9D6DE"; g.fillText("re-sizes the gates every second", cx + cw / 2, cy + 40);
+
+  // lanes and labels
+  SLICES.forEach((s, i) => {
+    const y = laneY(i);
+    g.strokeStyle = s.color; g.globalAlpha = 0.25; g.lineWidth = 6; g.lineCap = "round";
+    g.beginPath(); g.moveTo(xs, y); g.lineTo(xe, y); g.stroke(); g.globalAlpha = 1;
+    g.textAlign = "left"; g.fillStyle = s.color; g.beginPath(); g.arc(14, y, 7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#142530"; g.font = `700 ${narrow ? 13 : 16}px ${font}`; g.fillText(narrow ? s.short : s.name, 28, narrow ? y + 5 : y - 2);
+    if (narrow) return;
+    g.font = `${narrow ? 12 : 14}px ${font}`; g.fillStyle = "#4D5E6A";
+    g.fillText(running && MAP.off[i] ? `sending ${MAP.off[i].toFixed(1)} Mbps` : `guaranteed ${s.sla} Mbps`, 28, y + 16);
+    g.textAlign = "right"; g.fillStyle = "#4D5E6A";
+    const got = MAP.off[i] * (1 - MAP.drop[i]);
+    g.fillText(running && MAP.off[i] ? `receives ${got.toFixed(1)} Mbps` : "receiver", w - 8, y + 5);
+  });
+
+  // switches
+  sx.forEach((x, k) => {
+    const wide = k === 1 ? 56 : 30;
+    g.fillStyle = "#FFFFFF"; g.strokeStyle = k === 1 ? "#142530" : "#9AA8B2"; g.lineWidth = k === 1 ? 2 : 1.5;
+    roundRect(g, x - wide / 2, 72, wide, 232, 10); g.fill(); g.stroke();
+    g.fillStyle = "#4D5E6A"; g.font = `${k === 1 ? 700 : 400} 14px ${font}`; g.textAlign = "center";
+    g.fillText(k === 1 && !narrow ? "s2: the gates" : "s" + (k + 1), x, 324);
+  });
+
+  // gates on s2
+  SLICES.forEach((s, i) => {
+    const y = laneY(i), open = MAP.open[i], gap = 8 + 30 * open;
+    g.fillStyle = s.color;
+    g.fillRect(gx - 22, y - 26, 44, 26 - gap / 2); g.fillRect(gx - 22, y + gap / 2, 44, 26 - gap / 2);
+  });
+
+  // dots
+  const speed = (xe - xs) / 4.2;
+  if (running && !reduceMotion) {
+    SLICES.forEach((s, i) => {
+      MAP.acc[i] += MAP.off[i] * 2.2 * dt;
+      while (MAP.acc[i] >= 1 && MAP.dots.length < 900) {
+        MAP.acc[i] -= 1;
+        MAP.dots.push({ lane: i, x: xs, y: laneY(i) + (Math.random() - 0.5) * 6, vy: 0, dead: false, decided: false, a: 1 });
+      }
+    });
+  }
+  MAP.dots.forEach(d => {
+    if (!d.dead) {
+      d.x += speed * dt;
+      if (!d.decided && d.x >= gx - 4) { d.decided = true; if (Math.random() < MAP.drop[d.lane]) d.dead = true; }
+    } else { d.vy += 520 * dt; d.y += d.vy * dt; d.x += speed * 0.25 * dt; d.a -= dt * 1.1; }
+  });
+  MAP.dots = MAP.dots.filter(d => d.x < xe && d.a > 0 && d.y < h + 10);
+  MAP.dots.forEach(d => {
+    g.globalAlpha = Math.max(0, d.a); g.fillStyle = d.dead ? "#D23F3F" : SLICES[d.lane].color;
+    g.beginPath(); g.arc(d.x, d.y, d.dead ? 3.6 : 3.4, 0, Math.PI * 2); g.fill();
+  });
+  g.globalAlpha = 1;
+
+  const msgEl = $("#mapMsg");
+  const msg = running && S.metrics ? ""
+    : S.status.state === "running" && S.status.algo
+      ? (S.phase === "traffic" ? "Traffic is starting. The first numbers arrive in a few seconds." : "Setting up the network. Traffic starts in a few seconds.")
+      : "Waiting for an experiment. Press \u201cRun this experiment\u201d to send traffic through the network.";
+  if (msgEl.textContent !== msg) { msgEl.textContent = msg; msgEl.hidden = !msg; }
+  requestAnimationFrame(drawMap);
+}
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+requestAnimationFrame(drawMap);
+
+/* ---------------- status & steps ---------------- */
+function renderStatus() {
+  const st = S.status; const el = $("#status"); const txt = $("#statusText");
+  el.className = "status " + (st.state || "idle");
+  const running = st.state === "running" || st.state === "replay";
+  $("#runBtn").disabled = running; $("#cmpBtn").disabled = running; $("#replayBtn").disabled = running; $("#stopBtn").disabled = !running;
+  if (st.state === "running" && st.algo) {
+    const t = S.metrics && S.metrics.algo === st.algo ? Math.round(S.metrics.t) : 0;
+    const pre = st.total > 1 ? `Run ${st.index + 1} of ${st.total}: ` : "Running: ";
+    txt.textContent = `${pre}${CASES[st.case].name}, ${ALGOS[st.algo].name}${t ? `, ${t} of ${st.duration} s` : ""}`;
+  } else if (st.state === "running") txt.textContent = "Running a terminal command";
+  else if (st.state === "replay") txt.textContent = `Replaying a saved run: ${CASES[st.case].name}, ${ALGOS[st.algo].name}`;
+  else if (st.state === "offline") txt.textContent = "Lost connection to the VM";
+  else txt.textContent = "Ready";
+}
+function renderSteps() {
+  const order = ["cleanup", "controller", "network", "traffic", "save"];
+  const p = S.phase; const idx = p === "done" ? 5 : order.indexOf(p);
+  $$("#steps li").forEach((li, i) => { li.className = idx < 0 ? "" : i < idx ? "done" : i === idx ? "current" : ""; });
+}
+
+/* ---------------- code view ---------------- */
+async function loadFile(name) {
+  if (S.files[name]) return S.files[name];
+  try { const r = await fetch("/api/file?name=" + encodeURIComponent(name)); S.files[name] = (await r.text()).split("\n"); }
+  catch (e) { S.files[name] = ["# could not load " + name]; }
+  return S.files[name];
+}
+async function renderCode() {
+  const lines = await loadFile(S.tab); const pre = $("#code");
+  pre.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  lines.forEach((t, i) => {
+    const d = document.createElement("div"); d.className = "ln" + (/^\s*#/.test(t) ? " c" : ""); d.dataset.n = i + 1;
+    const n = document.createElement("span"); n.className = "n"; n.textContent = i + 1;
+    const s = document.createElement("span"); s.className = "t"; s.textContent = t || " ";
+    d.append(n, s); frag.append(d);
+  });
+  pre.append(frag); markLine(true);
+}
+function markLine(scroll) {
+  $$("#code .ln.cur").forEach(x => x.classList.remove("cur"));
+  if (S.tab !== "run_case.sh" || !S.curLine) return;
+  const el = $(`#code .ln[data-n="${S.curLine}"]`);
+  if (el) { el.classList.add("cur"); if (scroll) el.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" }); }
+}
+function explain(cmd) {
+  if (!cmd) return "";
+  if (/^sudo mn -c/.test(cmd)) return "Clearing away any old virtual network";
+  if (/^pkill .*ryu-manager/.test(cmd)) return "Stopping any controller left over";
+  if (/^sleep/.test(cmd)) return "Waiting a moment";
+  if (/^echo/.test(cmd)) return "Printing a progress message";
+  if (/ryu-manager|QOS_ALGO=/.test(cmd)) return "Starting the SDN controller, the program that sets the gates";
+  if (/^tail|^grep/.test(cmd)) return "Showing the controller's decisions in the terminal";
+  if (/^sudo python3/.test(cmd)) return "Building the virtual network and sending traffic through it";
+  if (/^kill/.test(cmd)) return "Stopping the decision display";
+  if (/^mkdir|^cd /.test(cmd)) return "Getting the results folder ready";
+  if (/^(ALGO|CASE|DUR|TAG)=/.test(cmd)) return "Reading the experiment settings";
+  return "Running a setup step";
+}
+function renderNow() {
+  const el = $("#now");
+  if (S.tab === "run_case.sh" && S.status.state === "replay") {
+    el.innerHTML = "Replaying a saved log, so the script is not running. The numbers on the left come from the controller's CSV file.";
+  } else if (S.tab === "run_case.sh") {
+    el.innerHTML = S.curLine ? `<b>line ${S.curLine}</b>&nbsp; ${explain(S.curCmd)}` : "The script is idle. Run an experiment to watch it execute line by line.";
+  } else if (S.tab === "afqos_app.py") {
+    el.innerHTML = "The controller program. Every second it reads the switch counters, predicts each slice's rate and calls the sharing rule that sets the gates.";
+  } else {
+    el.innerHTML = "Builds the virtual network (8 computers, 4 switches) and sends bursty traffic for each slice.";
+  }
+}
+function flashController(m) {
+  if (S.tab !== "afqos_app.py" || m.algo === "static") return;
+  const fn = m.algo === "aqos" ? "def meter_allocation_aqos" : "def meter_allocation_afqos";
+  const lines = S.files["afqos_app.py"] || [];
+  const targets = [lines.findIndex(t => t.includes(fn)), lines.findIndex(t => t.includes("self.modify_meters(ev.msg.datapath, new_meter)"))];
+  targets.filter(i => i >= 0).forEach((i, k) => {
+    const el = $(`#code .ln[data-n="${i + 1}"]`); if (!el) return;
+    el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 650);
+    if (k === 0 && !S.userScrolledCode) el.scrollIntoView({ block: "center" });
+  });
+  $("#now").innerHTML = `<b>t = ${Math.round(m.t)} s</b>&nbsp; The controller just ran <b>${fn.slice(4)}()</b> and re-sized the gates on s2.`;
+}
+$("#codeTabs").addEventListener("click", e => {
+  const b = e.target.closest(".tab"); if (!b) return;
+  S.tab = b.dataset.f; $$("#codeTabs .tab").forEach(x => x.setAttribute("aria-selected", String(x === b)));
+  renderCode(); renderNow();
+});
+
+/* ---------------- terminal ---------------- */
+const termEl = $("#term"); let termStick = true;
+termEl.addEventListener("scroll", () => { termStick = termEl.scrollTop + termEl.clientHeight >= termEl.scrollHeight - 30; });
+function addTerm(d) {
+  const div = document.createElement("div");
+  let k = d.kind || "out"; if (k === "out" && / t=\d+s\] eMBB/.test(d.text)) k = "slice-line";
+  div.className = k; div.textContent = d.text; termEl.append(div);
+  while (termEl.childElementCount > 1500) termEl.firstChild.remove();
+  if (termStick) termEl.scrollTop = termEl.scrollHeight;
+}
+$("#tClear").onclick = () => (termEl.innerHTML = "");
+const hist = []; let hi = 0;
+$("#tForm").addEventListener("submit", e => {
+  e.preventDefault(); const v = $("#tIn").value.trim(); if (!v) return;
+  if (v === "clear") { termEl.innerHTML = ""; $("#tIn").value = ""; return; }
+  hist.push(v); hi = hist.length; $("#tIn").value = ""; post("/api/command", { cmd: v });
+});
+$("#tIn").addEventListener("keydown", e => {
+  if (e.key === "ArrowUp" && hi > 0) { hi--; $("#tIn").value = hist[hi]; e.preventDefault(); }
+  else if (e.key === "ArrowDown") { hi = Math.min(hist.length, hi + 1); $("#tIn").value = hist[hi] || ""; e.preventDefault(); }
+  else if (e.key === "c" && e.ctrlKey) { post("/api/stop"); e.preventDefault(); }
+});
+$$(".chip").forEach(c => (c.onclick = () => post("/api/command", { cmd: c.dataset.cmd })));
+
+/* ---------------- results ---------------- */
+async function loadResults() {
+  try { S.results = await (await fetch("/api/results")).json(); } catch (e) { return; }
+  const sel = $("#replaySel"); const keep = sel.value;
+  sel.innerHTML = S.results.runs.length
+    ? S.results.runs.slice().sort((a, b) => b.mtime - a.mtime).map(r => `<option value="${r.file}">${ALGOS[r.algo] ? ALGOS[r.algo].name : r.algo}, ${CASES[r.case].name}</option>`).join("")
+    : `<option value="">No saved runs yet</option>`;
+  if (keep) sel.value = keep;
+  renderResults();
+}
+function renderResults() {
+  const box = $("#results"); if (!S.results) return;
+  const c = S.sel.res; const runs = {};
+  S.results.runs.filter(r => r.case === c).forEach(r => (runs[r.algo] = r));
+  const rules = [["static", "Fixed slices", "#B5C0C8"], ["aqos", "AQoS", "#6B8193"], ["afqos", "AFQoS", "#142530"]];
+  if (!Object.keys(runs).length) {
+    box.innerHTML = `<p class="empty">No saved runs for ${CASES[c].name} yet. Choose it above and press “Run all three rules”.</p>`; return;
+  }
+  const af = runs.afqos;
+  let summary = "";
+  if (af) {
+    const good = SLICES.filter((s, i) => af.through[i] != null && af.through[i] >= 99).map(s => s.name);
+    summary = good.length ? `With AFQoS, ${list(good)} kept at least 99% of ${good.length > 1 ? "their" : "its"} traffic.` : "With AFQoS, every slice lost some traffic in this case.";
+    if (runs.static) {
+      const avg = r => r.through.reduce((a, v) => a + (v || 0), 0) / 4;
+      summary += ` On average AFQoS delivered ${avg(af).toFixed(1)}% against ${avg(runs.static).toFixed(1)}% with fixed slices.`;
+    }
+  }
+  box.innerHTML = (summary ? `<p class="res-summary">${summary}</p>` : "") + `<div class="res-grid">` + SLICES.map((s, i) => `
+    <div class="res-slice" style="--c:${s.color}"><h3><i></i>${s.name}</h3>
+      ${rules.map(([k, label, col]) => {
+        const r = runs[k]; const v = r ? r.through[i] : null; const p = S.results.paper[k] && S.results.paper[k][c] ? S.results.paper[k][c][i] : null;
+        return `<div class="res-bar"><span>${label}</span><div class="track">${v != null ? `<div class="fillr" style="width:${v}%;background:${col}"></div>` : ""}${p != null ? `<div class="paper-mark" style="left:calc(${p}% - 1px)" title="Paper: ${p}%"></div>` : ""}</div><span class="val">${v != null ? v.toFixed(1) + "%" : "not run"}</span></div>`;
+      }).join("")}
+    </div>`).join("") + `</div>
+    <div class="res-key"><span><i style="background:#B5C0C8"></i>Fixed slices</span><span><i style="background:#6B8193"></i>AQoS</span><span><i style="background:#142530"></i>AFQoS</span><span><i style="background:#C47A08;width:3px"></i>paper's result</span></div>`;
+}
+
+/* ---------------- live stream ---------------- */
+function connect() {
+  const es = new EventSource("/api/stream");
+  es.addEventListener("open", () => { if (S.status.state === "offline") { S.status = { state: "idle" }; renderStatus(); } });
+  es.addEventListener("error", () => { S.status = { state: "offline" }; renderStatus(); });
+  es.addEventListener("term", e => addTerm(JSON.parse(e.data)));
+  es.addEventListener("status", e => {
+    const st = JSON.parse(e.data); const wasRunning = S.status.state === "running" || S.status.state === "replay";
+    if ((st.state === "running" && st.algo) || st.state === "replay") {
+      if (!S.status.algo || S.status.algo !== st.algo || S.status.started !== st.started) { SLICES.forEach(s => (S.history[s.id] = [])); S.metrics = null; MAP.dots = []; MAP.off = [0, 0, 0, 0]; }
+      if (st.state === "replay") S.phase = "traffic";
+    }
+    if ((st.state === "running" && st.algo) || st.state === "replay") {
+      S.sel.algo = st.algo; S.sel.case = st.case; S.sel.res = st.case; if (st.duration) S.sel.dur = st.duration; syncPills(); renderResults();
+    }
+    S.status = st; renderStatus(); renderSteps(); renderNow();
+    if (wasRunning && st.state === "idle") {
+      loadResults();
+      if (S.metrics) $("#story").innerHTML = `<p>The run has finished: ${CASES[S.metrics.case].name.toLowerCase()} network with ${ALGOS[S.metrics.algo].name}. The cards above show how much of each slice's traffic got through, and the comparison at the bottom of the page is updated.</p>`;
+    }
+  });
+  es.addEventListener("phase", e => { const p = JSON.parse(e.data); S.phase = p.phase; renderSteps(); });
+  es.addEventListener("line", e => {
+    const l = JSON.parse(e.data); S.curLine = l.line; S.curCmd = l.text || null;
+    if (S.tab === "run_case.sh") { markLine(true); renderNow(); }
+  });
+  es.addEventListener("metrics", e => {
+    const m = JSON.parse(e.data); S.metrics = m;
+    m.slices.forEach(x => S.history[x.id].push({ t: m.t, off: mbps(x.offered_kbps), gate: gateOf(x) }));
+    SLICES.forEach(s => { if (S.history[s.id].length > 400) S.history[s.id].splice(0, S.history[s.id].length - 400); });
+    updateCards(m); story(m); decisions(m); mapTargets(m); drawMinis(); renderStatus(); flashController(m);
+    if (S.sel.res !== m.case && (S.status.state === "running" || S.status.state === "replay")) { S.sel.res = m.case; $$("#pRes .pill").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === m.case))); renderResults(); }
+  });
+  es.addEventListener("results", () => loadResults());
+}
+$("#code").addEventListener("wheel", () => { S.userScrolledCode = true; clearTimeout(S._sc); S._sc = setTimeout(() => (S.userScrolledCode = false), 4000); });
+window.addEventListener("resize", drawMinis);
+renderCode(); renderNow(); renderSteps(); drawMinis(); loadResults(); connect();
+</script>
+</body>
+</html>

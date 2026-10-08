@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 352" width="760" height="352" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13">
+  <title>Ryu re-sizes the four slice meters on s2 every second</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#8A949E"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="760" height="352" rx="12" fill="#FFFFFF"/>
+  <text x="24" y="30" font-size="15" font-weight="600" fill="#142530">Ryu re-sizes the four slice meters on s2 every second</text>
+
+  <rect x="200" y="56" width="340" height="72" rx="8" fill="none" stroke="#8A949E" stroke-width="1.25"/>
+  <text x="216" y="80" font-weight="600" fill="#142530">Ryu controller (afqos_app.py)</text>
+  <text x="216" y="98" font-size="11.5" fill="#4D5E6A">predicts each slice's rate for the next second</text>
+  <text x="216" y="114" font-size="11.5" fill="#4D5E6A">runs AFQoS, AQoS or static, then sets meters</text>
+
+  <g fill="none" stroke="#8A949E" stroke-width="1.25">
+    <path d="M348 222V130" marker-end="url(#arrow)"/>
+    <path d="M444 226V130" marker-end="url(#arrow)"/>
+    <path d="M316 128V220" marker-end="url(#arrow)"/>
+    <path d="M160 250H188" marker-end="url(#arrow)"/>
+    <path d="M252 250H280" marker-end="url(#arrow)"/>
+    <path d="M384 250H412" marker-end="url(#arrow)"/>
+    <path d="M476 250H504" marker-end="url(#arrow)"/>
+    <path d="M568 250H600" marker-end="url(#arrow)"/>
+  </g>
+  <text x="452" y="176" font-size="11.5" fill="#4D5E6A">flow stats, every 1 s</text>
+  <text x="308" y="176" text-anchor="end" font-size="11.5" fill="#4D5E6A">new meter rates</text>
+
+  <rect x="24" y="194" width="136" height="112" rx="8" fill="none" stroke="#8A949E" stroke-width="1.25"/>
+  <text x="36" y="218" font-weight="600" fill="#142530">Senders h1-h4</text>
+  <text x="36" y="234" font-size="11.5" fill="#4D5E6A">eMBB, UDP 5111</text>
+  <text x="36" y="250" font-size="11.5" fill="#4D5E6A">URLLC, UDP 5112</text>
+  <text x="36" y="266" font-size="11.5" fill="#4D5E6A">mMTC, UDP 5113</text>
+  <text x="36" y="282" font-size="11.5" fill="#4D5E6A">Best effort, UDP 5114</text>
+
+  <rect x="188" y="226" width="64" height="48" rx="8" fill="none" stroke="#8A949E" stroke-width="1.25"/>
+  <text x="220" y="254" text-anchor="middle" fill="#142530">s1</text>
+
+  <rect x="280" y="222" width="104" height="56" rx="8" fill="#2F6FDB" fill-opacity="0.12" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="332" y="245" text-anchor="middle" font-weight="600" fill="#142530">s2</text>
+  <text x="332" y="263" text-anchor="middle" font-size="11.5" fill="#142530">4 meters</text>
+  <text x="332" y="298" text-anchor="middle" font-size="11.5" fill="#4D5E6A">counts offered</text>
+
+  <rect x="412" y="226" width="64" height="48" rx="8" fill="none" stroke="#8A949E" stroke-width="1.25"/>
+  <text x="444" y="254" text-anchor="middle" fill="#142530">s3</text>
+  <text x="444" y="298" text-anchor="middle" font-size="11.5" fill="#4D5E6A">counts delivered</text>
+
+  <rect x="504" y="226" width="64" height="48" rx="8" fill="none" stroke="#8A949E" stroke-width="1.25"/>
+  <text x="536" y="254" text-anchor="middle" fill="#142530">s4</text>
+
+  <rect x="600" y="194" width="136" height="112" rx="8" fill="none" stroke="#8A949E" stroke-width="1.25"/>
+  <text x="612" y="218" font-weight="600" fill="#142530">Receivers h5-h8</text>
+  <text x="612" y="234" font-size="11.5" fill="#4D5E6A">iperf servers,</text>
+  <text x="612" y="250" font-size="11.5" fill="#4D5E6A">one per slice</text>
+
+  <text x="24" y="334" font-size="11.5" fill="#4D5E6A">Switch links: 30 Mbps, 10 ms delay. Slice budget at s2: 8 + 6 + 4 + 2 = 20 Mbps.</text>
+</svg>

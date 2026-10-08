@@ -1,0 +1,12 @@
+# experiment output (regenerate with ./run_all.sh)
+results/
+results.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# editors and OS
+.DS_Store
+.vscode/
+.idea/
