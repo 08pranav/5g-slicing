@@ -10,7 +10,7 @@
 ![Ryu](https://img.shields.io/badge/Ryu-4.34-142530)
 ![OpenFlow](https://img.shields.io/badge/OpenFlow-1.3-142530)
 
-[Deploy the demo on Vercel](https://vercel.com/new/clone?repository-url=https://github.com/08pranav/5g-slicing)
+**[Live demo: 5g-slicing-implementation.vercel.app](https://5g-slicing-implementation.vercel.app/)**
 
 <img src="docs/dashboard-preview.png" alt="The dashboard during an overloaded run" width="900">
 
@@ -95,7 +95,7 @@ A web page that runs experiments from buttons and shows them two ways at once:
 
 The dashboard has a **demo mode** that replays real recorded runs in the browser, with no network or backend. It switches on automatically on any public host, or with `?demo` on the URL.
 
-To host your own copy on Vercel, press the deploy link at the top of this page, or import the repository at [vercel.com/new](https://vercel.com/new). No settings are needed: `vercel.json` publishes the `dashboard/` folder and copies the source files shown in the code viewer.
+The hosted demo is at **https://5g-slicing-implementation.vercel.app/**. To host your own copy, import the repository at [vercel.com/new](https://vercel.com/new). No settings are needed: `vercel.json` publishes the `dashboard/` folder and copies the source files shown in the code viewer.
 
 To refresh the bundled data after new runs: `python3 dashboard/build_demo_data.py results`
 
