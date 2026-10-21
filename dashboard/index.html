@@ -189,7 +189,7 @@ button, input, select { font: inherit; color: inherit; }
 .code .ln.flash { background: rgba(242, 184, 92, 0.22); box-shadow: inset 4px 0 0 var(--t-amber); transition: background 0.3s; }
 .termout { flex: 1; overflow: auto; padding: 10px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .termout .cmd { color: var(--t-green); }
-.termout .cmd::before { content: "ubuntu@sdn:~/afqos-slicing$ "; color: var(--t-dim); }
+.termout .cmd::before { content: "ubuntu@sdn:~/5g-slicing$ "; color: var(--t-dim); }
 .termout .trace { color: var(--t-cyan); }
 .termout .trace::before { content: "\25B6  "; }
 .termout .err { color: var(--t-red); }
@@ -366,7 +366,7 @@ button, input, select { font: inherit; color: inherit; }
         <button class="chip" data-cmd="python analyze.py">analyze all results</button>
       </div>
       <form class="tform" id="tForm" autocomplete="off">
-        <span class="prompt">ubuntu@sdn:~/afqos-slicing$</span>
+        <span class="prompt">ubuntu@sdn:~/5g-slicing$</span>
         <input id="tIn" spellcheck="false" aria-label="Type a command">
       </form>
     </div>
@@ -381,6 +381,7 @@ button, input, select { font: inherit; color: inherit; }
   </aside>
 </main>
 
+<script src="demo.js"></script>
 <script>
 "use strict";
 const SLICES = [

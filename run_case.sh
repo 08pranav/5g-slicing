@@ -2,11 +2,14 @@
 # Run one experiment: start the Ryu app, run the Mininet traffic, stop both.
 # Usage:  ./run_case.sh <afqos|aqos|static> <case 1-4> [seconds, default 300]
 # Extra Mininet options can be passed with TOPO_ARGS, e.g.
-#   TOPO_ARGS="--userspace --no-cpu-limit" ./run_case.sh afqos 3 60
+#   TOPO_ARGS="--userspace" ./run_case.sh afqos 3 60
+# CPU limiting is off by default: where cgroup limits fail, the fallback inside
+# qostopo.py runs a Mininet cleanup that kills the controller. TOPO_ARGS="" turns it back on.
 set -u
 ALGO=${1:-afqos}
 CASE=${2:-3}
 DUR=${3:-300}
+TOPO_ARGS=${TOPO_ARGS-"--no-cpu-limit"}
 TAG="${ALGO}_case${CASE}"
 cd "$(dirname "$0")"
 mkdir -p results

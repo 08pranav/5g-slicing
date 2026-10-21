@@ -38,7 +38,6 @@ class AdaptiveSlicing13(simple_switch_13.SimpleSwitch13):
     def __init__(self, *args, **kwargs):
         super(AdaptiveSlicing13, self).__init__(*args, **kwargs)
 
-        # experiment settings
         self.algo = os.environ.get("QOS_ALGO", "afqos").lower()   # afqos | aqos | static
         self.out_path = os.environ.get("QOS_OUT", "results/run.csv")
         self.POLL_INTVL = 1          # seconds between flow-stats polls (paper: 1 s)
@@ -50,7 +49,6 @@ class AdaptiveSlicing13(simple_switch_13.SimpleSwitch13):
         # pre-configured (SLA) rates in kbps, total = 20,000 (paper Section "Results")
         self.configured = {1: 8000, 2: 6000, 3: 4000, 4: 2000}
 
-        # state
         self.datapaths = {}
         self.prev_bytes = {2: {}, 3: {}}
         self.rate_q = {2: {m: [] for m in self.configured}, 3: {m: [] for m in self.configured}}
@@ -69,7 +67,6 @@ class AdaptiveSlicing13(simple_switch_13.SimpleSwitch13):
         self.logger.info("AFQoS reproduction app: algo=%s, log=%s", self.algo, self.out_path)
         self.monitor_thread = hub.spawn(self._monitor)
 
-    # ---------------------------------------------------------------- monitoring
     @set_ev_cls(ofp_event.EventOFPStateChange, [MAIN_DISPATCHER, DEAD_DISPATCHER])
     def _state_change_handler(self, ev):
         dp = ev.datapath
@@ -153,7 +150,6 @@ class AdaptiveSlicing13(simple_switch_13.SimpleSwitch13):
                                round(new_meter.get(m, float("nan")), 2)])
         self.csv_file.flush()
 
-    # --------------------------------------------------- rate approximation
     def approximate_rate(self, x, y):
         """Authors' 'predictive' method: least-squares line over the last
         POCKET samples, evaluated one poll interval into the future."""
@@ -168,7 +164,6 @@ class AdaptiveSlicing13(simple_switch_13.SimpleSwitch13):
         next_poll = x[-1] + (x[1] - x[0])
         return max(float(m * next_poll + c), 0.0)
 
-    # ------------------------------------------------------------ allocation
     def meter_allocation(self, allocated, current):
         if self.algo == "aqos":
             return self.meter_allocation_aqos(allocated, current)
@@ -267,7 +262,6 @@ class AdaptiveSlicing13(simple_switch_13.SimpleSwitch13):
             rem_unused -= given
         return need, new_meter, rem_unused
 
-    # --------------------------------------------------------- push to switch
     def modify_meters(self, datapath, meter_rate):
         ofp = datapath.ofproto
         parser = datapath.ofproto_parser

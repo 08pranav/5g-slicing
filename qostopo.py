@@ -69,7 +69,6 @@ class QosTopo(Topo):
         self.addLink(s3, s4, cls=TCLink, bw=LINK_BW, delay=LINK_DELAY)
 
 
-# ------------------------------------------------------------ REST helpers
 def rest_post(base, path, payload, retries=20):
     for _ in range(retries):
         try:
@@ -96,7 +95,6 @@ def add_flow(base, dpid, udp_dst, meter_id):
         "actions": [{"type": "METER", "meter_id": meter_id}, {"type": "OUTPUT", "port": 2}]})
 
 
-# ---------------------------------------------------- authors' burst shape
 def mapper(val, in1, in2, out1, out2):
     m = (out2 - out1) / (in2 - in1)
     return m * val + (out1 - m * in1)

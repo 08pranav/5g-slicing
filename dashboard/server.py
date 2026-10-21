@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Live demo dashboard for the AFQoS network-slicing experiment.
 
-Run it inside the Ubuntu VM, from the kit folder, WITHOUT sudo:
+Run it inside the Ubuntu VM, from the repository folder, WITHOUT sudo:
 
     python3 dashboard/server.py
 
@@ -9,7 +9,7 @@ then open  http://<VM address>:8000  in the browser on your Mac.
 (Find the VM address on the Mac with:  multipass info sdn  -> "IPv4".)
 
 The page can start experiments, replay saved runs and run shell commands in
-the kit folder, so keep it on the VM's private network (the Multipass default).
+the repository folder, so keep it on the VM's private network (the Multipass default).
 Only the Python standard library is used.
 """
 import csv
@@ -28,8 +28,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KIT = os.path.dirname(HERE)
-RESULTS = os.path.join(KIT, "results")
+ROOT = os.path.dirname(HERE)
+RESULTS = os.path.join(ROOT, "results")
 PORT = int(os.environ.get("DASH_PORT", "8000"))
 RYU_BIN = os.path.expanduser("~/ryu-env/bin")
 
@@ -47,7 +47,6 @@ PAPER = {
 }
 
 
-# --------------------------------------------------------------------- events
 class Bus:
     """Fan-out of server-sent events to every open page."""
 
@@ -94,7 +93,6 @@ def term(text, kind="out"):
     BUS.publish("term", {"kind": kind, "text": text})
 
 
-# ---------------------------------------------------------------- live metrics
 class RunState:
     """Per-slice numbers built from the controller's CSV rows."""
 
@@ -258,7 +256,6 @@ class Metrics:
 METRICS = Metrics()
 
 
-# -------------------------------------------------------------------- runner
 TRACE = re.compile(r"^(\++)\[L(\d+)\] (.*)$")
 
 
@@ -311,7 +308,7 @@ class Runner:
             BUS.publish("phase", {"phase": "cleanup", **meta})
             METRICS.watch(meta["algo"], meta["case"])
         try:
-            proc = subprocess.Popen(job["argv"], cwd=KIT, env=self.env(), stdout=subprocess.PIPE,
+            proc = subprocess.Popen(job["argv"], cwd=ROOT, env=self.env(), stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True,
                                     bufsize=1, errors="replace", start_new_session=True)
         except OSError as exc:
@@ -373,7 +370,7 @@ class Runner:
             if proc.poll() is not None:
                 break
         subprocess.run("sudo -n mn -c >/dev/null 2>&1; pkill -f 'ryu-manager afqos_app.py';"
-                       " sudo -n pkill -9 iperf", shell=True, cwd=KIT)
+                       " sudo -n pkill -9 iperf", shell=True, cwd=ROOT)
         term("network cleaned up (sudo mn -c)", "exit")
 
 
@@ -397,7 +394,7 @@ def side_command(cmd):
     def work():
         term(cmd, "cmd")
         try:
-            out = subprocess.run(["bash", "-c", cmd], cwd=KIT, env=Runner.env(), capture_output=True,
+            out = subprocess.run(["bash", "-c", cmd], cwd=ROOT, env=Runner.env(), capture_output=True,
                                  text=True, timeout=30, errors="replace")
             for line in (out.stdout + out.stderr).splitlines():
                 term(line)
@@ -407,7 +404,6 @@ def side_command(cmd):
     threading.Thread(target=work, daemon=True).start()
 
 
-# ------------------------------------------------------------------- results
 def summarise_results():
     runs = []
     if os.path.isdir(RESULTS):
@@ -437,7 +433,6 @@ def summarise_results():
     return {"runs": runs, "paper": PAPER}
 
 
-# ---------------------------------------------------------------------- http
 class Handler(BaseHTTPRequestHandler):
     server_version = "SlicingDashboard/1.0"
 
@@ -472,7 +467,7 @@ class Handler(BaseHTTPRequestHandler):
             name = parse_qs(url.query).get("name", [""])[0]
             if name not in SHOWN_FILES:
                 return self._send(404, {"error": "unknown file"})
-            with open(os.path.join(KIT, name)) as f:
+            with open(os.path.join(ROOT, name)) as f:
                 return self._send(200, f.read(), "text/plain")
         if url.path == "/api/results":
             return self._send(200, summarise_results())

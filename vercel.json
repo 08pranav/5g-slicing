@@ -1,0 +1,5 @@
+{
+  "framework": null,
+  "buildCommand": "mkdir -p dashboard/demo/src && cp afqos_app.py qostopo.py analyze.py run_case.sh dashboard/demo/src/",
+  "outputDirectory": "dashboard"
+}
